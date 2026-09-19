@@ -6,6 +6,15 @@
     "overview": "Let users search for and request movies and shows.",
     "owner": "your-name",
     "category": "General",
-    "versions": []
+    "versions": [
+      {
+        "version": "1.1.0.0",
+        "changelog": "Delete Web/requests.html",
+        "targetAbi": "12.1.0.0",
+        "sourceUrl": "https://github.com/tmagnin/jellyfin-plugin-media-requests/releases/download/v1.1.0.0/media-requests_1.1.0.0.zip",
+        "checksum": "68c47235f14ca2be2f21201f2e1cb44f",
+        "timestamp": "2026-09-19T13:13:58Z"
+      }
+    ]
   }
 ]
