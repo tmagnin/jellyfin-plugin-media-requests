@@ -89,6 +89,12 @@ public sealed class TmdbClient
         return items;
     }
 
+    /// <summary>Makes a cheap authenticated call so admins can confirm the key works.</summary>
+    public async Task TestAsync(CancellationToken ct)
+    {
+        using var doc = await GetJsonAsync("configuration", ct).ConfigureAwait(false);
+    }
+
     public async Task<TmdbItem> GetDetailsAsync(string mediaType, int tmdbId, CancellationToken ct)
     {
         var cfg = Plugin.Instance?.Configuration;

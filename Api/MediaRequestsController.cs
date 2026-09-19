@@ -1,9 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.IO;
 using System.Net.Mime;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using Jellyfin.Plugin.MediaRequests.Configuration;
 using Jellyfin.Plugin.MediaRequests.Models;
 using Jellyfin.Plugin.MediaRequests.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -18,6 +21,9 @@ namespace Jellyfin.Plugin.MediaRequests.Api;
 public class MediaRequestsController : ControllerBase
 {
     private const int MaxNoteLength = 500;
+    private const string ClientResourceName = "Jellyfin.Plugin.MediaRequests.Web.requestsClient.js";
+    private static readonly Regex LanguagePattern = new("^[a-zA-Z]{2,3}(-[a-zA-Z0-9]{2,8})*$", RegexOptions.Compiled);
+    private static readonly Lazy<string> ClientScriptText = new(LoadClientScript);
     private static long _lastSyncTicks;
 
     private readonly TmdbClient _tmdb;
@@ -35,6 +41,32 @@ public class MediaRequestsController : ControllerBase
         Guid.TryParse(User.FindFirst("Jellyfin-UserId")?.Value, out var id) ? id : Guid.Empty;
 
     private bool IsAdmin => User.IsInRole("Administrator");
+
+    private static PluginConfiguration Config => Plugin.Instance?.Configuration ?? new PluginConfiguration();
+
+    private static string LoadClientScript()
+    {
+        using var stream = typeof(Plugin).Assembly.GetManifestResourceStream(ClientResourceName);
+        if (stream is null)
+        {
+            return "console.error('Media Requests: client script is missing from the plugin.');";
+        }
+
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
+    }
+
+    /// <summary>
+    /// The script that adds the Requests button to the web UI. It has to load before sign-in and from a
+    /// plain script tag, so it is public. It contains only interface code; every data call it makes is authorized.
+    /// </summary>
+    [HttpGet("Client.js")]
+    [AllowAnonymous]
+    public ContentResult ClientScript()
+    {
+        Response.Headers.CacheControl = "no-cache";
+        return Content(ClientScriptText.Value, "application/javascript; charset=utf-8");
+    }
 
     /// <summary>Searches TMDB and marks which results are already in the library or requested.</summary>
     [HttpGet("Search")]
@@ -110,7 +142,12 @@ public class MediaRequestsController : ControllerBase
             .Select(RequestDto.From)
             .ToList();
 
-        return Ok(new RequestListDto { IsAdmin = admin, Requests = items });
+        return Ok(new RequestListDto
+        {
+            IsAdmin = admin,
+            NeedsSetup = admin && string.IsNullOrWhiteSpace(Config.TmdbApiKey),
+            Requests = items
+        });
     }
 
     [HttpPost("Requests")]
@@ -164,7 +201,7 @@ public class MediaRequestsController : ControllerBase
             Note = string.IsNullOrEmpty(note) ? null : note
         };
 
-        var max = Plugin.Instance?.Configuration.MaxPendingRequestsPerUser ?? 0;
+        var max = Config.MaxPendingRequestsPerUser;
         switch (_store.TryAdd(request, max, out var existing))
         {
             case AddOutcome.Duplicate:
@@ -226,6 +263,66 @@ public class MediaRequestsController : ControllerBase
         _store.Remove(id);
         return Ok(new OkDto());
     }
+
+    /// <summary>Admin only: current settings. The API key is never returned.</summary>
+    [HttpGet("Settings")]
+    [Authorize(Policy = "RequiresElevation")]
+    public ActionResult<SettingsDto> GetSettings() => Ok(ToSettingsDto(Config));
+
+    /// <summary>Admin only: save settings. An empty key keeps the saved one.</summary>
+    [HttpPut("Settings")]
+    [Authorize(Policy = "RequiresElevation")]
+    public ActionResult<SettingsDto> UpdateSettings([FromBody] UpdateSettingsDto body)
+    {
+        var plugin = Plugin.Instance;
+        if (plugin is null)
+        {
+            return StatusCode(500, new ErrorDto("The plugin isn't ready yet. Try again in a moment."));
+        }
+
+        var language = string.IsNullOrWhiteSpace(body.TmdbLanguage) ? "en-US" : body.TmdbLanguage.Trim();
+        if (!LanguagePattern.IsMatch(language))
+        {
+            return BadRequest(new ErrorDto("Use a language code such as en-US or de-DE."));
+        }
+
+        var config = plugin.Configuration;
+        if (!string.IsNullOrWhiteSpace(body.TmdbApiKey))
+        {
+            config.TmdbApiKey = body.TmdbApiKey.Trim();
+        }
+
+        config.TmdbLanguage = language;
+        config.MaxPendingRequestsPerUser = Math.Max(0, body.MaxPendingRequestsPerUser);
+        config.IncludeAdultResults = body.IncludeAdultResults;
+        plugin.UpdateConfiguration(config);
+
+        return Ok(ToSettingsDto(config));
+    }
+
+    /// <summary>Admin only: checks that the saved TMDB key works.</summary>
+    [HttpPost("Settings/Test")]
+    [Authorize(Policy = "RequiresElevation")]
+    public async Task<ActionResult<OkDto>> TestSettings(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _tmdb.TestAsync(cancellationToken);
+            return Ok(new OkDto());
+        }
+        catch (TmdbException ex)
+        {
+            return StatusCode(ex.StatusCode, new ErrorDto(ex.Message));
+        }
+    }
+
+    private static SettingsDto ToSettingsDto(PluginConfiguration c) => new()
+    {
+        HasApiKey = !string.IsNullOrWhiteSpace(c.TmdbApiKey),
+        Language = c.TmdbLanguage,
+        MaxPendingRequestsPerUser = c.MaxPendingRequestsPerUser,
+        IncludeAdultResults = c.IncludeAdultResults
+    };
 
     private static string? NormalizeType(string? value) => value?.Trim().ToLowerInvariant() switch
     {

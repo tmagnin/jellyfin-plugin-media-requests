@@ -152,6 +152,42 @@ public sealed class RequestListDto
     [JsonPropertyName("isAdmin")]
     public bool IsAdmin { get; set; }
 
+    /// <summary>True for admins when no TMDB key has been saved yet.</summary>
+    [JsonPropertyName("needsSetup")]
+    public bool NeedsSetup { get; set; }
+
     [JsonPropertyName("requests")]
     public List<RequestDto> Requests { get; set; } = new();
+}
+
+public sealed class SettingsDto
+{
+    /// <summary>The key itself is never sent to the browser.</summary>
+    [JsonPropertyName("hasApiKey")]
+    public bool HasApiKey { get; set; }
+
+    [JsonPropertyName("language")]
+    public string Language { get; set; } = "en-US";
+
+    [JsonPropertyName("maxPendingRequestsPerUser")]
+    public int MaxPendingRequestsPerUser { get; set; }
+
+    [JsonPropertyName("includeAdultResults")]
+    public bool IncludeAdultResults { get; set; }
+}
+
+public sealed class UpdateSettingsDto
+{
+    /// <summary>Leave empty to keep the saved key.</summary>
+    [JsonPropertyName("tmdbApiKey")]
+    public string? TmdbApiKey { get; set; }
+
+    [JsonPropertyName("tmdbLanguage")]
+    public string? TmdbLanguage { get; set; }
+
+    [JsonPropertyName("maxPendingRequestsPerUser")]
+    public int MaxPendingRequestsPerUser { get; set; }
+
+    [JsonPropertyName("includeAdultResults")]
+    public bool IncludeAdultResults { get; set; }
 }

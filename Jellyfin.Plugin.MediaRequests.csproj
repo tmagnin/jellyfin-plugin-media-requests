@@ -20,7 +20,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Configuration\configPage.html" />
-    <EmbeddedResource Include="Web\requests.html" />
+    <EmbeddedResource Include="Web\requestsClient.js" />
   </ItemGroup>
 
 </Project>

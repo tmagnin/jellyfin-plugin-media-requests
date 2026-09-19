@@ -27,23 +27,13 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
 
     public IEnumerable<PluginPageInfo> GetPages()
     {
-        var ns = GetType().Namespace;
-
-        // Admin settings (Dashboard > Plugins > Media Requests).
+        // Admin settings page (Dashboard > Plugins > Media Requests).
+        // The user-facing UI is not a plugin page: Jellyfin shows plugin pages inside the admin
+        // Dashboard, so the Requests button and panel are added to the main UI by Web/requestsClient.js.
         yield return new PluginPageInfo
         {
             Name = "MediaRequestsConfig",
-            EmbeddedResourcePath = $"{ns}.Configuration.configPage.html"
-        };
-
-        // The user-facing page. EnableInMainMenu puts a link in the sidebar for everyone.
-        yield return new PluginPageInfo
-        {
-            Name = "MediaRequests",
-            DisplayName = "Requests",
-            EmbeddedResourcePath = $"{ns}.Web.requests.html",
-            EnableInMainMenu = true,
-            MenuIcon = "playlist_add"
+            EmbeddedResourcePath = $"{GetType().Namespace}.Configuration.configPage.html"
         };
     }
 }
