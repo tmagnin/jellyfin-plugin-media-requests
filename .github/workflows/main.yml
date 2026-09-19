@@ -1,1 +1,93 @@
+name: Release
 
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release, four numbers (for example 1.0.0.0)"
+        required: true
+        type: string
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Work out version and tag
+        id: ver
+        env:
+          EVENT: ${{ github.event_name }}
+          VERSION_INPUT: ${{ inputs.version }}
+        run: |
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            VERSION="${VERSION_INPUT#v}"
+          else
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Version must be four numbers like 1.2.3.4. Got: $VERSION"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+          echo "changelog=$(git log -1 --pretty=%s)" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        run: >
+          dotnet publish Jellyfin.Plugin.MediaRequests.csproj -c Release -o out
+          -p:AssemblyVersion=${{ steps.ver.outputs.version }}
+          -p:FileVersion=${{ steps.ver.outputs.version }}
+
+      - name: Package
+        id: pkg
+        run: |
+          ZIP="$RUNNER_TEMP/media-requests_${{ steps.ver.outputs.version }}.zip"
+          (cd out && zip "$ZIP" Jellyfin.Plugin.MediaRequests.dll)
+          echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
+          echo "md5=$(md5sum "$ZIP" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Create or update GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.ver.outputs.tag }}
+          ZIP: ${{ steps.pkg.outputs.zip }}
+          NOTES: ${{ steps.ver.outputs.changelog }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$ZIP" --clobber
+          else
+            gh release create "$TAG" "$ZIP" --title "$TAG" --notes "$NOTES" --target "$GITHUB_SHA"
+          fi
+
+      - name: Add version to manifest.json on main
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+          TAG: ${{ steps.ver.outputs.tag }}
+          MD5: ${{ steps.pkg.outputs.md5 }}
+          NOTES: ${{ steps.ver.outputs.changelog }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git checkout -B main origin/main
+          python3 .github/scripts/update_manifest.py \
+            "$VERSION" \
+            "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/media-requests_${VERSION}.zip" \
+            "$MD5" \
+            "$NOTES"
+          git add manifest.json
+          git commit -m "Add ${TAG} to manifest"
+          git push origin main
