@@ -1,0 +1,11 @@
+[
+  {
+    "guid": "f3a8c2d1-7b4e-4c19-9d5a-2e6b8a1c0f47",
+    "name": "Media Requests",
+    "description": "Adds a Requests page to the Jellyfin sidebar. Users search TMDB and request movies and shows that aren't in the library yet; admins approve, decline, and track them from the same page.",
+    "overview": "Let users search for and request movies and shows.",
+    "owner": "your-name",
+    "category": "General",
+    "versions": []
+  }
+]

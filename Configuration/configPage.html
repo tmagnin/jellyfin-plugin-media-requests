@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Media Requests</title>
+</head>
+<body>
+<div id="MediaRequestsConfigPage" data-role="page" class="page type-interior pluginConfigurationPage"
+     data-require="emby-input,emby-button,emby-checkbox">
+    <div data-role="content">
+        <div class="content-primary">
+            <form id="MediaRequestsConfigForm">
+                <div class="sectionTitleContainer flex align-items-center">
+                    <h2 class="sectionTitle">Media Requests</h2>
+                </div>
+
+                <div class="inputContainer">
+                    <input is="emby-input" type="password" id="TmdbApiKey" autocomplete="off"
+                           label="TMDB API key or read access token" />
+                    <div class="fieldDescription">
+                        Used to search for movies and shows. Create a free key at
+                        themoviedb.org under Settings, then API. Either the API key or the
+                        API read access token works. The key stays on the server.
+                    </div>
+                </div>
+
+                <div class="inputContainer">
+                    <input is="emby-input" type="text" id="TmdbLanguage" label="Search language" />
+                    <div class="fieldDescription">
+                        Language for titles and summaries, for example en-US, de-DE, or ja-JP.
+                    </div>
+                </div>
+
+                <div class="inputContainer">
+                    <input is="emby-input" type="number" id="MaxPendingRequestsPerUser" min="0" step="1"
+                           label="Pending requests per user" />
+                    <div class="fieldDescription">
+                        How many unreviewed requests one person can have at once. Use 0 for no limit.
+                    </div>
+                </div>
+
+                <div class="checkboxContainer checkboxContainer-withDescription">
+                    <label class="emby-checkbox-label">
+                        <input is="emby-checkbox" type="checkbox" id="IncludeAdultResults" />
+                        <span>Include adult titles in search results</span>
+                    </label>
+                </div>
+
+                <div>
+                    <button is="emby-button" type="submit" class="raised button-submit block emby-button">
+                        <span>Save</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        (function () {
+            var pluginId = 'f3a8c2d1-7b4e-4c19-9d5a-2e6b8a1c0f47';
+            var page = document.querySelector('#MediaRequestsConfigPage');
+
+            page.addEventListener('pageshow', function () {
+                Dashboard.showLoadingMsg();
+                ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+                    page.querySelector('#TmdbApiKey').value = config.TmdbApiKey || '';
+                    page.querySelector('#TmdbLanguage').value = config.TmdbLanguage || 'en-US';
+                    page.querySelector('#MaxPendingRequestsPerUser').value =
+                        config.MaxPendingRequestsPerUser == null ? 10 : config.MaxPendingRequestsPerUser;
+                    page.querySelector('#IncludeAdultResults').checked = !!config.IncludeAdultResults;
+                    Dashboard.hideLoadingMsg();
+                });
+            });
+
+            page.querySelector('#MediaRequestsConfigForm').addEventListener('submit', function (e) {
+                e.preventDefault();
+                Dashboard.showLoadingMsg();
+                ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+                    config.TmdbApiKey = page.querySelector('#TmdbApiKey').value.trim();
+                    config.TmdbLanguage = page.querySelector('#TmdbLanguage').value.trim() || 'en-US';
+                    var max = parseInt(page.querySelector('#MaxPendingRequestsPerUser').value, 10);
+                    config.MaxPendingRequestsPerUser = isNaN(max) || max < 0 ? 0 : max;
+                    config.IncludeAdultResults = page.querySelector('#IncludeAdultResults').checked;
+                    ApiClient.updatePluginConfiguration(pluginId, config)
+                        .then(Dashboard.processPluginConfigurationUpdateResult);
+                });
+                return false;
+            });
+        })();
+    </script>
+</div>
+</body>
+</html>

@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Requests</title>
+</head>
+<body>
+<div id="MediaRequestsPage" data-role="page" class="page type-interior" data-title="Requests">
+    <style>
+        #MediaRequestsPage {
+            --mr-accent: #00a4dc;
+            --mr-fill: #0a7aa1;
+            --mr-line: rgba(127, 127, 127, .32);
+            --mr-soft: rgba(127, 127, 127, .12);
+        }
+        #MediaRequestsPage [hidden] { display: none !important; }
+        #MediaRequestsPage .mr-wrap { padding: 1.2em 0 3em; }
+        #MediaRequestsPage .mr-title { margin: 0 0 .25em; font-size: 1.9em; font-weight: 600; }
+        #MediaRequestsPage .mr-sub { margin: 0 0 1.4em; opacity: .72; max-width: 38em; }
+
+        #MediaRequestsPage .mr-tabs { display: flex; gap: 1.8em; border-bottom: 1px solid var(--mr-line); margin-bottom: 1.4em; }
+        #MediaRequestsPage .mr-tab {
+            background: none; border: 0; border-bottom: 3px solid transparent; margin-bottom: -1px;
+            color: inherit; font: inherit; font-size: 1.05em; padding: .6em 0; cursor: pointer; opacity: .7;
+            display: inline-flex; align-items: center; gap: .5em;
+        }
+        #MediaRequestsPage .mr-tab.is-active { opacity: 1; border-bottom-color: var(--mr-accent); }
+        #MediaRequestsPage .mr-badge {
+            background: var(--mr-fill); color: #fff; border-radius: 99px; font-size: .78em;
+            min-width: 1.6em; padding: .1em .5em; text-align: center;
+        }
+
+        #MediaRequestsPage .mr-tab:focus-visible,
+        #MediaRequestsPage .mr-chip:focus-visible,
+        #MediaRequestsPage .mr-btn:focus-visible,
+        #MediaRequestsPage .mr-input:focus-visible { outline: 2px solid var(--mr-accent); outline-offset: 2px; }
+
+        #MediaRequestsPage .mr-input {
+            width: 100%; box-sizing: border-box; background: var(--mr-soft); color: inherit;
+            border: 1px solid var(--mr-line); border-radius: 6px; padding: .8em 1em; font: inherit;
+        }
+        #MediaRequestsPage .mr-searchrow { display: flex; flex-direction: column; gap: .9em; margin-bottom: 1.4em; }
+        #MediaRequestsPage .mr-chips { display: flex; flex-wrap: wrap; gap: .5em; margin-bottom: 1.2em; }
+        #MediaRequestsPage .mr-searchrow .mr-chips { margin-bottom: 0; }
+        #MediaRequestsPage .mr-chip {
+            background: transparent; color: inherit; font: inherit; font-size: .92em; cursor: pointer;
+            border: 1px solid var(--mr-line); border-radius: 99px; padding: .35em .95em;
+        }
+        #MediaRequestsPage .mr-chip.is-active { background: var(--mr-fill); border-color: var(--mr-fill); color: #fff; }
+
+        #MediaRequestsPage .mr-grid {
+            display: grid; gap: 1em;
+            grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+        }
+        #MediaRequestsPage .mr-card {
+            display: flex; gap: 1em; padding: .9em; border: 1px solid var(--mr-line); border-radius: 8px;
+        }
+        #MediaRequestsPage .mr-poster {
+            flex: 0 0 92px; aspect-ratio: 2 / 3; border-radius: 4px; overflow: hidden; background: var(--mr-soft);
+        }
+        #MediaRequestsPage .mr-poster img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        #MediaRequestsPage .mr-noposter {
+            width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+            font-size: 2em; opacity: .4;
+        }
+        #MediaRequestsPage .mr-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+        #MediaRequestsPage .mr-name { margin: 0; font-size: 1.05em; font-weight: 600; line-height: 1.3; }
+        #MediaRequestsPage .mr-meta { display: flex; gap: .6em; align-items: center; margin-top: .25em; font-size: .88em; opacity: .75; }
+        #MediaRequestsPage .mr-type { border: 1px solid var(--mr-line); border-radius: 4px; padding: 0 .4em; }
+        #MediaRequestsPage .mr-overview {
+            margin: .5em 0 .8em; font-size: .9em; opacity: .75; line-height: 1.4;
+            display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+        }
+        #MediaRequestsPage .mr-by { margin: .4em 0 0; font-size: .85em; opacity: .7; }
+        #MediaRequestsPage .mr-actions { margin-top: auto; padding-top: .6em; display: flex; flex-wrap: wrap; gap: .5em; align-items: center; }
+
+        #MediaRequestsPage .mr-btn {
+            display: inline-block; padding: .45em .95em; border-radius: 5px; border: 1px solid var(--mr-line);
+            background: transparent; color: inherit; font: inherit; font-size: .92em; cursor: pointer; text-decoration: none;
+        }
+        #MediaRequestsPage .mr-btn[disabled] { opacity: .55; cursor: default; }
+        #MediaRequestsPage .mr-btn-primary { background: var(--mr-fill); border-color: var(--mr-fill); color: #fff; }
+        #MediaRequestsPage .mr-btn-danger { color: #d9605b; border-color: rgba(217, 96, 91, .55); }
+
+        #MediaRequestsPage .mr-status {
+            display: inline-flex; align-items: center; padding: .2em .7em; border-radius: 99px;
+            font-size: .85em; border: 1px solid currentColor;
+        }
+        #MediaRequestsPage .mr-status-Pending { color: #d89a2b; }
+        #MediaRequestsPage .mr-status-Approved { color: #3aa0d1; }
+        #MediaRequestsPage .mr-status-Available { color: #48a868; }
+        #MediaRequestsPage .mr-status-Declined { color: #d9605b; }
+
+        #MediaRequestsPage .mr-decline { display: flex; gap: .5em; flex-wrap: wrap; width: 100%; }
+        #MediaRequestsPage .mr-decline .mr-input { flex: 1 1 12em; padding: .45em .7em; font-size: .92em; }
+
+        #MediaRequestsPage .mr-empty { opacity: .7; padding: 1.5em 0; max-width: 34em; }
+        #MediaRequestsPage .mr-error { color: #d9605b; padding: 1.5em 0; max-width: 34em; }
+
+        #MediaRequestsPage .mr-toast {
+            position: fixed; left: 50%; bottom: 2em; transform: translateX(-50%); z-index: 10000;
+            background: #262626; color: #fff; padding: .75em 1.2em; border-radius: 6px; max-width: 90vw;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, .4); opacity: 0; pointer-events: none; transition: opacity .2s;
+        }
+        #MediaRequestsPage .mr-toast.is-visible { opacity: 1; }
+        #MediaRequestsPage .mr-toast.is-error { background: #a83a36; }
+        @media (prefers-reduced-motion: reduce) { #MediaRequestsPage .mr-toast { transition: none; } }
+    </style>
+
+    <div data-role="content">
+        <div class="content-primary">
+            <div class="mr-wrap">
+                <h1 class="mr-title">Requests</h1>
+                <p class="mr-sub">Can't find something in the library? Search for it and request it. An admin will review your request.</p>
+
+                <div class="mr-tabs" role="tablist">
+                    <button type="button" class="mr-tab is-active" role="tab" aria-selected="true" data-view="find">Find</button>
+                    <button type="button" class="mr-tab" role="tab" aria-selected="false" data-view="requests">
+                        <span id="mrRequestsLabel">My requests</span>
+                        <span id="mrPendingBadge" class="mr-badge" hidden></span>
+                    </button>
+                </div>
+
+                <section id="mrFind">
+                    <div class="mr-searchrow">
+                        <input id="mrQuery" class="mr-input" type="search" autocomplete="off"
+                               placeholder="Search movies and shows" aria-label="Search movies and shows">
+                        <div class="mr-chips" id="mrTypeChips">
+                            <button type="button" class="mr-chip is-active" data-type="all">All</button>
+                            <button type="button" class="mr-chip" data-type="movie">Movies</button>
+                            <button type="button" class="mr-chip" data-type="tv">Shows</button>
+                        </div>
+                    </div>
+                    <div id="mrFindBody" aria-live="polite"></div>
+                </section>
+
+                <section id="mrRequests" hidden>
+                    <div class="mr-chips" id="mrStatusChips"></div>
+                    <div id="mrRequestsBody"></div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <div id="mrToast" class="mr-toast" role="status" aria-live="polite"></div>
+
+    <script type="text/javascript">
+        (function () {
+            'use strict';
+
+            var FALLBACK_ERROR = 'Something went wrong. Try again.';
+            var page = document.querySelector('#MediaRequestsPage');
+            var state = {
+                view: 'find',
+                type: 'all',
+                query: '',
+                find: { status: 'idle', message: '', items: [] },
+                requests: null,
+                isAdmin: false,
+                filter: null,
+                declining: null,
+                loadError: ''
+            };
+            var searchSeq = 0;
+            var debounceTimer = null;
+            var toastTimer = null;
+
+            function $(selector) { return page.querySelector(selector); }
+
+            function esc(value) {
+                return String(value == null ? '' : value).replace(/[&<>"']/g, function (c) {
+                    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+                });
+            }
+
+            function api(method, path, body) {
+                var options = { type: method, url: ApiClient.getUrl('MediaRequests/' + path), dataType: 'json' };
+                if (body !== undefined) {
+                    options.data = JSON.stringify(body);
+                    options.contentType = 'application/json';
+                }
+                return ApiClient.ajax(options);
+            }
+
+            function errorText(err) {
+                if (err && typeof err.json === 'function') {
+                    return err.json().then(
+                        function (j) { return (j && (j.message || j.detail || j.title)) || FALLBACK_ERROR; },
+                        function () { return FALLBACK_ERROR; }
+                    );
+                }
+                return Promise.resolve(FALLBACK_ERROR);
+            }
+
+            function toast(message, isError) {
+                var el = $('#mrToast');
+                el.textContent = message;
+                el.className = 'mr-toast is-visible' + (isError ? ' is-error' : '');
+                clearTimeout(toastTimer);
+                toastTimer = setTimeout(function () { el.className = 'mr-toast'; }, 4000);
+            }
+
+            function typeLabel(type) { return type === 'tv' ? 'Show' : 'Movie'; }
+
+            function statusChip(status, text) {
+                return '<span class="mr-status mr-status-' + esc(status) + '">' + esc(text || status) + '</span>';
+            }
+
+            function card(m) {
+                var poster = m.posterUrl
+                    ? '<img src="' + esc(m.posterUrl) + '" alt="" loading="lazy">'
+                    : '<div class="mr-noposter" aria-hidden="true">' + esc((m.title || '?').charAt(0)) + '</div>';
+                return '<article class="mr-card" data-card="' + esc(m.id) + '">' +
+                    '<div class="mr-poster">' + poster + '</div>' +
+                    '<div class="mr-info">' +
+                    '<h3 class="mr-name">' + esc(m.title) + '</h3>' +
+                    '<div class="mr-meta"><span class="mr-type">' + typeLabel(m.mediaType) + '</span>' +
+                    (m.year ? '<span>' + esc(m.year) + '</span>' : '') + '</div>' +
+                    (m.overview ? '<p class="mr-overview">' + esc(m.overview) + '</p>' : '') +
+                    (m.extra || '') +
+                    '<div class="mr-actions">' + m.actions + '</div>' +
+                    '</div></article>';
+            }
+
+            // ---------- Find ----------
+
+            function findActions(r) {
+                if (r.inLibrary) {
+                    return '<a class="mr-btn mr-btn-primary" href="#/details?id=' + esc(r.libraryItemId) + '">Open in library</a>';
+                }
+                if (r.requestStatus) {
+                    return statusChip(r.requestStatus, r.requestedByMe ? 'Requested by you' : 'Already requested');
+                }
+                return '<button type="button" class="mr-btn mr-btn-primary" data-action="request" data-tmdb="' +
+                    esc(r.tmdbId) + '" data-type="' + esc(r.mediaType) + '">Request</button>';
+            }
+
+            function renderFind() {
+                var body = $('#mrFindBody');
+                var f = state.find;
+                if (f.status === 'idle') {
+                    body.innerHTML = '<p class="mr-empty">Type a title to search movies and shows.</p>';
+                } else if (f.status === 'loading') {
+                    body.innerHTML = '<p class="mr-empty">Searching…</p>';
+                } else if (f.status === 'error') {
+                    body.innerHTML = '<p class="mr-error">' + esc(f.message) + '</p>';
+                } else if (!f.items.length) {
+                    body.innerHTML = '<p class="mr-empty">No matches for "' + esc(state.query.trim()) +
+                        '". Check the spelling or try another title.</p>';
+                } else {
+                    body.innerHTML = '<div class="mr-grid">' + f.items.map(function (r) {
+                        return card({
+                            id: r.mediaType + '-' + r.tmdbId, title: r.title, year: r.year, mediaType: r.mediaType,
+                            overview: r.overview, posterUrl: r.posterUrl, actions: findActions(r)
+                        });
+                    }).join('') + '</div>';
+                }
+            }
+
+            function runSearch() {
+                var q = state.query.trim();
+                if (q.length < 2) {
+                    searchSeq++;
+                    state.find = { status: 'idle', message: '', items: [] };
+                    renderFind();
+                    return;
+                }
+                var seq = ++searchSeq;
+                state.find.status = 'loading';
+                renderFind();
+                api('GET', 'Search?query=' + encodeURIComponent(q) + '&mediaType=' + state.type).then(function (items) {
+                    if (seq !== searchSeq) { return; }
+                    state.find = { status: 'done', message: '', items: items || [] };
+                    renderFind();
+                }).catch(function (err) {
+                    errorText(err).then(function (message) {
+                        if (seq !== searchSeq) { return; }
+                        state.find = { status: 'error', message: message, items: [] };
+                        renderFind();
+                    });
+                });
+            }
+
+            function requestTitle(button) {
+                var tmdbId = parseInt(button.getAttribute('data-tmdb'), 10);
+                var mediaType = button.getAttribute('data-type');
+                button.disabled = true;
+                button.textContent = 'Requesting…';
+
+                api('POST', 'Requests', { tmdbId: tmdbId, mediaType: mediaType }).then(function (created) {
+                    state.find.items.forEach(function (r) {
+                        if (r.tmdbId === tmdbId && r.mediaType === mediaType) {
+                            r.requestStatus = 'Pending';
+                            r.requestedByMe = true;
+                        }
+                    });
+                    if (state.requests) { state.requests.unshift(created); }
+                    renderFind();
+                    renderTabs();
+                    toast('Requested "' + created.title + '". An admin will review it.');
+                }).catch(function (err) {
+                    errorText(err).then(function (message) {
+                        toast(message, true);
+                        if (err && err.status === 409) { runSearch(); return; }
+                        button.disabled = false;
+                        button.textContent = 'Request';
+                    });
+                });
+            }
+
+            // ---------- Requests ----------
+
+            var STATUS_ORDER = ['Pending', 'Approved', 'Available', 'Declined'];
+
+            function requestActions(r) {
+                var html = statusChip(r.status);
+                if (r.status === 'Available' && r.libraryItemId) {
+                    html += '<a class="mr-btn mr-btn-primary" href="#/details?id=' + esc(r.libraryItemId) + '">Open in library</a>';
+                }
+                if (state.isAdmin) {
+                    if (state.declining === r.id) {
+                        return '<div class="mr-decline">' +
+                            '<input class="mr-input" type="text" maxlength="300" data-role="reason" placeholder="Reason (optional)" aria-label="Reason for declining">' +
+                            '<button type="button" class="mr-btn mr-btn-danger" data-action="decline-confirm" data-id="' + esc(r.id) + '">Decline</button>' +
+                            '<button type="button" class="mr-btn" data-action="decline-cancel">Cancel</button></div>';
+                    }
+                    if (r.status === 'Pending') {
+                        html += '<button type="button" class="mr-btn mr-btn-primary" data-action="status" data-to="Approved" data-id="' + esc(r.id) + '">Approve</button>';
+                        html += '<button type="button" class="mr-btn" data-action="decline" data-id="' + esc(r.id) + '">Decline</button>';
+                    } else if (r.status === 'Approved') {
+                        html += '<button type="button" class="mr-btn" data-action="status" data-to="Available" data-id="' + esc(r.id) + '">Mark available</button>';
+                        html += '<button type="button" class="mr-btn" data-action="decline" data-id="' + esc(r.id) + '">Decline</button>';
+                    } else if (r.status === 'Declined') {
+                        html += '<button type="button" class="mr-btn" data-action="status" data-to="Pending" data-id="' + esc(r.id) + '">Reopen</button>';
+                    }
+                    html += '<button type="button" class="mr-btn mr-btn-danger" data-action="delete" data-id="' + esc(r.id) + '">Delete</button>';
+                } else if (r.status === 'Pending') {
+                    html += '<button type="button" class="mr-btn" data-action="delete" data-id="' + esc(r.id) + '">Cancel request</button>';
+                }
+                return html;
+            }
+
+            function requestExtra(r) {
+                var when = new Date(r.createdUtc).toLocaleDateString();
+                var html = '<p class="mr-by">' + (state.isAdmin ? 'Requested by ' + esc(r.userName) + ' on ' : 'Requested on ') + esc(when) + '</p>';
+                if (r.adminNote) {
+                    html += '<p class="mr-by">' + (r.status === 'Declined' ? 'Reason: ' : 'Note: ') + esc(r.adminNote) + '</p>';
+                }
+                return html;
+            }
+
+            function counts() {
+                var c = { all: 0, Pending: 0, Approved: 0, Available: 0, Declined: 0 };
+                (state.requests || []).forEach(function (r) { c.all++; c[r.status]++; });
+                return c;
+            }
+
+            function renderTabs() {
+                Array.prototype.forEach.call(page.querySelectorAll('.mr-tab'), function (tab) {
+                    var active = tab.getAttribute('data-view') === state.view;
+                    tab.classList.toggle('is-active', active);
+                    tab.setAttribute('aria-selected', active ? 'true' : 'false');
+                });
+                $('#mrFind').hidden = state.view !== 'find';
+                $('#mrRequests').hidden = state.view !== 'requests';
+                $('#mrRequestsLabel').textContent = state.isAdmin ? 'Requests' : 'My requests';
+
+                var pending = counts().Pending;
+                var badge = $('#mrPendingBadge');
+                badge.hidden = !(state.isAdmin && pending > 0);
+                badge.textContent = pending;
+            }
+
+            function renderRequests() {
+                var chips = $('#mrStatusChips');
+                var body = $('#mrRequestsBody');
+
+                if (state.requests === null) {
+                    chips.innerHTML = '';
+                    body.innerHTML = state.loadError
+                        ? '<p class="mr-error">' + esc(state.loadError) + '</p>'
+                        : '<p class="mr-empty">Loading…</p>';
+                    return;
+                }
+
+                var c = counts();
+                var filters = [['all', 'All']].concat(STATUS_ORDER.map(function (s) { return [s, s]; }));
+                chips.innerHTML = filters.map(function (f) {
+                    return '<button type="button" class="mr-chip' + (state.filter === f[0] ? ' is-active' : '') +
+                        '" data-status="' + f[0] + '">' + f[1] + ' (' + c[f[0]] + ')</button>';
+                }).join('');
+
+                var list = state.requests.filter(function (r) { return state.filter === 'all' || r.status === state.filter; });
+                if (!list.length) {
+                    var text;
+                    if (!state.requests.length) {
+                        text = state.isAdmin
+                            ? 'No one has requested anything yet.'
+                            : 'You haven\'t requested anything yet. Use Find to search for a movie or show.';
+                    } else {
+                        text = 'Nothing here. Pick another status above.';
+                    }
+                    body.innerHTML = '<p class="mr-empty">' + text + '</p>';
+                    return;
+                }
+
+                body.innerHTML = '<div class="mr-grid">' + list.map(function (r) {
+                    return card({
+                        id: r.id, title: r.title, year: r.year, mediaType: r.mediaType, overview: r.overview,
+                        posterUrl: r.posterUrl, extra: requestExtra(r), actions: requestActions(r)
+                    });
+                }).join('') + '</div>';
+            }
+
+            function loadRequests() {
+                return api('GET', 'Requests').then(function (res) {
+                    state.isAdmin = !!res.isAdmin;
+                    state.requests = res.requests || [];
+                    state.loadError = '';
+                    if (state.filter === null) { state.filter = state.isAdmin ? 'Pending' : 'all'; }
+                    renderTabs();
+                    renderRequests();
+                }).catch(function (err) {
+                    return errorText(err).then(function (message) {
+                        state.loadError = message;
+                        renderRequests();
+                    });
+                });
+            }
+
+            function replaceRequest(updated) {
+                state.requests = state.requests.map(function (r) { return r.id === updated.id ? updated : r; });
+            }
+
+            function setStatus(id, status, adminNote) {
+                api('PUT', 'Requests/' + id + '/Status', { status: status, adminNote: adminNote || null }).then(function (updated) {
+                    replaceRequest(updated);
+                    state.declining = null;
+                    renderTabs();
+                    renderRequests();
+                    toast(status === 'Pending' ? 'Request reopened.' : 'Marked as ' + status.toLowerCase() + '.');
+                }).catch(function (err) {
+                    errorText(err).then(function (message) { toast(message, true); });
+                });
+            }
+
+            function deleteRequest(id) {
+                var r = (state.requests || []).filter(function (x) { return x.id === id; })[0];
+                var question = state.isAdmin ? 'Delete this request?' : 'Cancel this request?';
+                if (!window.confirm(question)) { return; }
+                api('DELETE', 'Requests/' + id).then(function () {
+                    state.requests = state.requests.filter(function (x) { return x.id !== id; });
+                    renderTabs();
+                    renderRequests();
+                    toast(state.isAdmin ? 'Request deleted.' : 'Request cancelled.');
+                    // Let the Find tab offer the title again.
+                    if (r && state.find.status === 'done') { runSearch(); }
+                }).catch(function (err) {
+                    errorText(err).then(function (message) { toast(message, true); });
+                });
+            }
+
+            // ---------- Events ----------
+
+            page.addEventListener('click', function (e) {
+                var tab = e.target.closest('.mr-tab');
+                if (tab) {
+                    state.view = tab.getAttribute('data-view');
+                    renderTabs();
+                    if (state.view === 'requests') { renderRequests(); loadRequests(); }
+                    return;
+                }
+
+                var typeChip = e.target.closest('#mrTypeChips .mr-chip');
+                if (typeChip) {
+                    state.type = typeChip.getAttribute('data-type');
+                    Array.prototype.forEach.call(page.querySelectorAll('#mrTypeChips .mr-chip'), function (c) {
+                        c.classList.toggle('is-active', c === typeChip);
+                    });
+                    runSearch();
+                    return;
+                }
+
+                var statusChipEl = e.target.closest('#mrStatusChips .mr-chip');
+                if (statusChipEl) {
+                    state.filter = statusChipEl.getAttribute('data-status');
+                    state.declining = null;
+                    renderRequests();
+                    return;
+                }
+
+                var btn = e.target.closest('[data-action]');
+                if (!btn) { return; }
+                var action = btn.getAttribute('data-action');
+                var id = btn.getAttribute('data-id');
+
+                if (action === 'request') { requestTitle(btn); }
+                else if (action === 'status') { setStatus(id, btn.getAttribute('data-to')); }
+                else if (action === 'decline') { state.declining = id; renderRequests(); }
+                else if (action === 'decline-cancel') { state.declining = null; renderRequests(); }
+                else if (action === 'decline-confirm') {
+                    var reason = btn.closest('.mr-card').querySelector('[data-role="reason"]').value.trim();
+                    setStatus(id, 'Declined', reason);
+                }
+                else if (action === 'delete') { deleteRequest(id); }
+            });
+
+            page.querySelector('#mrQuery').addEventListener('input', function (e) {
+                state.query = e.target.value;
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(runSearch, 350);
+            });
+
+            page.querySelector('#mrQuery').addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    clearTimeout(debounceTimer);
+                    runSearch();
+                }
+            });
+
+            page.addEventListener('pageshow', function () {
+                renderTabs();
+                renderFind();
+                loadRequests();
+                setTimeout(function () { $('#mrQuery').focus(); }, 100);
+            });
+
+            page.addEventListener('pagehide', function () {
+                clearTimeout(debounceTimer);
+                clearTimeout(toastTimer);
+            });
+        })();
+    </script>
+</div>
+</body>
+</html>
