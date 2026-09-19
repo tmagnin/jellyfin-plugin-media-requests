@@ -4,7 +4,7 @@ guid: "f3a8c2d1-7b4e-4c19-9d5a-2e6b8a1c0f47"
 version: "1.0.0.0"
 targetAbi: "12.1.0.0"
 framework: "net10.0"
-owner: "your-name"
+owner: "tmagnin"
 overview: "Let users search for and request movies and shows."
 description: >
   Adds a Requests page to the Jellyfin sidebar. Users search TMDB and request
